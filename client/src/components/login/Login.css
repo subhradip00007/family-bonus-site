@@ -31,12 +31,9 @@
   color: #9aa0ad;
 }
 
-.login-google {
-  width: 100%;
-  background: #ffffff;
-  color: #1f2328;
-  border: 0;
-  font-weight: 600;
+.login-google-wrap {
+  display: flex;
+  justify-content: center;
 }
 
 .login-note {
