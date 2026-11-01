@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import './App.css'
+import Home from "./components/home/Home";
 
 function App() {
   
-return <h1>Family Bonus Site</h1>;
+return <Home />;
 
   
 }

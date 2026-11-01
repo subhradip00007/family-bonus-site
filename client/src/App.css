@@ -1,0 +1,27 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  border-bottom: 1px solid #2a2d35;
+}
+
+.navbar-brand {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.btn {
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.btn-outline {
+  background: transparent;
+  color: #e6e8ee;
+  border: 1px solid #3a3e48;
+}
