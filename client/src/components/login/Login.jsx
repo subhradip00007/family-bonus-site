@@ -1,9 +1,11 @@
 import { GoogleLogin } from "@react-oauth/google";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "./AuthContext";
 import "./Login.css";
 
 function Login() {
   const navigate = useNavigate();
+  const { setUser } = useAuth();
 
   async function handleGoogleSuccess(credentialResponse) {
     const res = await fetch("http://localhost:5000/api/auth/google", {
@@ -19,8 +21,13 @@ function Login() {
       return;
     }
 
-    console.log("Logged in:", data.user);
-    navigate("/");
+    setUser(data.user);
+
+    if (data.user.needsUsername) {
+      navigate("/username");
+    } else {
+      navigate("/");
+    }
   }
 
   return (

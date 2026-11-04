@@ -52,3 +52,26 @@
 .login-back:hover {
   text-decoration: underline;
 }
+
+.login-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 14px;
+  margin-bottom: 12px;
+  background: #0f1115;
+  color: #e6e8ee;
+  border: 1px solid #3a3e48;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.login-error {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: #ff8a8a;
+}
+
+.login-submit {
+  width: 100%;
+}

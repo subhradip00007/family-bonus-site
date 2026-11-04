@@ -5,7 +5,7 @@ function FamilySection(props) {
   return (
     <section className="families">
       <h2>Families</h2>
-      <p className="families-sub">Pick a family to see its bonus list.</p>
+      <p className="families-sub">Pick your family to manage it.</p>
       <div className="family-grid">
         {props.families.map((family) => (
           <FamilyCard

@@ -18,6 +18,7 @@ function publicUser(user) {
     id: user.id,
     email: user.email,
     username: user.username,
+    picture: user.picture,
     role: user.role,
     familyId: user.family_id,
     needsUsername: !user.username,
@@ -53,6 +54,10 @@ router.post("/google", async (req, res) => {
       db.prepare("UPDATE users SET role = 'dev' WHERE id = ?").run(user.id);
       user.role = "dev";
     }
+
+    const picture = payload.picture || null;
+    db.prepare("UPDATE users SET picture = ? WHERE id = ?").run(picture, user.id);
+    user.picture = picture;
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
