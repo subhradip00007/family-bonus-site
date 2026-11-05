@@ -30,6 +30,7 @@ function Navbar() {
             </div>
           )}
           <span className="navbar-name">{name}</span>
+          {user.role === "dev" && <Link className="btn btn-outline" to="/dev-admin">Dev Panel</Link>}
           <button className="btn btn-outline" onClick={handleLogout}>
             Logout
           </button>
