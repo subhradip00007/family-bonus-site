@@ -7,7 +7,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/auth/me", { credentials: "include" })
+    fetch("/api/auth/me", { credentials: "include" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => setUser(data ? data.user : null))
       .catch(() => setUser(null))
@@ -15,7 +15,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function logout() {
-    await fetch("http://localhost:5000/api/auth/logout", {
+    await fetch("/api/auth/logout", {
       method: "POST",
       credentials: "include",
     });

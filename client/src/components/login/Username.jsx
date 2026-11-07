@@ -11,7 +11,7 @@ function Username() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    const res = await fetch("http://localhost:5000/api/auth/username", {
+    const res = await fetch("/api/auth/username", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

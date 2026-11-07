@@ -19,7 +19,7 @@ function FamilySection() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetch("http://localhost:5000/api/families", { signal: controller.signal })
+    fetch("/api/families", { signal: controller.signal })
       .then((response) => {
         if (!response.ok) throw new Error("Could not load families");
         return response.json();

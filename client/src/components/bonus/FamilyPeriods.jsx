@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import "./BonusViews.css";
 
-const API = "http://localhost:5000/api";
+const API = "/api";
 const format = (value) => new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value || 0);
 const dateText = (value) => value ? new Date(`${value}T12:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "In progress";
 

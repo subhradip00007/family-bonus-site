@@ -3,7 +3,7 @@ import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../login/AuthContext";
 import "./DevAdmin.css";
 
-const API = "http://localhost:5000/api/dev-admin";
+const API = "/api/dev-admin";
 const ROLES = ["Super Admin"];
 
 async function readResponse(response) {
