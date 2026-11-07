@@ -18,8 +18,10 @@ function sheetSnapshot(sheet) {
     endDate: sheet.period.endDate,
     status: sheet.period.status,
     events: sheet.events.map((event) => ({ name: event.name, rate: event.rate })),
+    strikeOptions: sheet.strikeOptions,
     players: sheet.players.map((player) => ({
       name: player.name,
+      strikeLevel: player.strikeLevel,
       strikePercent: player.strikePercent,
       paidStatus: player.paidStatus,
       counts: Object.fromEntries(sheet.events.map((event) => [event.name, player.counts[event.id] || 0])),
@@ -125,7 +127,11 @@ function loadSheet(periodId) {
   const period = db.prepare(`
     SELECT bp.id, bp.family_id AS familyId, bp.name, bp.start_date AS startDate,
       bp.end_date AS endDate, bp.status, bp.saved_at AS savedAt,
-      bp.finished_at AS finishedAt, f.name AS familyName, f.logo AS familyLogo
+      bp.finished_at AS finishedAt,
+      bp.strike_1_percent AS strike1Percent,
+      bp.strike_2_percent AS strike2Percent,
+      bp.strike_3_percent AS strike3Percent,
+      f.name AS familyName, f.logo AS familyLogo
     FROM bonus_periods bp
     JOIN families f ON f.id = bp.family_id
     WHERE bp.id = ?
@@ -137,7 +143,8 @@ function loadSheet(periodId) {
     WHERE period_id = ? ORDER BY position, id
   `).all(periodId);
   const players = db.prepare(`
-    SELECT id, player_name AS name, strike_percent AS strikePercent,
+    SELECT id, player_name AS name, strike_percent AS legacyStrikePercent,
+      strike_level AS strikeLevel,
       paid_status AS paidStatus, position
     FROM bonus_period_players WHERE period_id = ? ORDER BY position, id
   `).all(periodId);
@@ -148,12 +155,23 @@ function loadSheet(periodId) {
     WHERE bpp.period_id = ?
   `).all(periodId);
   const entryMap = new Map(entries.map((entry) => [`${entry.playerId}:${entry.eventId}`, Number(entry.quantity)]));
+  const strikeOptions = [Number(period.strike1Percent), Number(period.strike2Percent), Number(period.strike3Percent)];
 
   const computedPlayers = players.map((player) => {
+    const legacyLevel = ({ 10: 1, 20: 2, 30: 3 })[Number(player.legacyStrikePercent)] || 0;
+    const strikeLevel = Number(player.strikeLevel) || legacyLevel;
+    const strikePercent = strikeLevel ? strikeOptions[strikeLevel - 1] : 0;
     const counts = Object.fromEntries(events.map((event) => [event.id, entryMap.get(`${player.id}:${event.id}`) || 0]));
     const subtotal = events.reduce((sum, event) => sum + Number(event.rate) * counts[event.id], 0);
-    const deduction = subtotal * Number(player.strikePercent) / 100;
-    return { ...player, counts, subtotal, deduction, payout: subtotal - deduction };
+    const deduction = subtotal * strikePercent / 100;
+    const cleanPlayer = {
+      id: player.id,
+      name: player.name,
+      strikeLevel,
+      paidStatus: player.paidStatus,
+      position: player.position,
+    };
+    return { ...cleanPlayer, strikeLevel, strikePercent, counts, subtotal, deduction, payout: subtotal - deduction };
   });
   const payoutTotal = computedPlayers.reduce((sum, player) => sum + player.payout, 0);
 
@@ -169,6 +187,7 @@ function loadSheet(periodId) {
       finishedAt: period.finishedAt,
     },
     events: events.map(({ id, name, rate }) => ({ id, name, rate: Number(rate) })),
+    strikeOptions,
     players: computedPlayers,
     payoutTotal,
     playersCount: computedPlayers.length,
@@ -410,6 +429,9 @@ router.put("/family-admin/:familyId/periods/:periodId", requireAuth, (req, res) 
   const startDate = String(req.body.startDate || "");
   const events = req.body.events;
   const players = req.body.players;
+  const defaultStrikeOptions = [10, 20, 30];
+  const rawStrikeOptions = Array.isArray(req.body.strikeOptions) ? req.body.strikeOptions : defaultStrikeOptions;
+  const strikeOptions = rawStrikeOptions.map(Number);
   if (name.length < 2 || name.length > 80) return res.status(400).json({ error: "Period name must be 2–80 characters" });
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !Number.isFinite(Date.parse(`${startDate}T00:00:00Z`))) {
     return res.status(400).json({ error: "Choose a valid period start date" });
@@ -419,6 +441,9 @@ router.put("/family-admin/:familyId/periods/:periodId", requireAuth, (req, res) 
   }
   if (!Array.isArray(players) || players.length > 200) {
     return res.status(400).json({ error: "A sheet can have up to 200 player rows" });
+  }
+  if (strikeOptions.length !== 3 || strikeOptions.some((percent) => !Number.isFinite(percent) || percent < 0 || percent > 100)) {
+    return res.status(400).json({ error: "Strike percentages must be between 0 and 100" });
   }
 
   const cleanEvents = [];
@@ -437,20 +462,29 @@ router.put("/family-admin/:familyId/periods/:periodId", requireAuth, (req, res) 
   const cleanPlayers = [];
   for (const [index, player] of players.entries()) {
     const playerName = String(player.name || "").trim();
-    const strikePercent = Number(player.strikePercent);
+    const legacyLevels = { 0: 0, 10: 1, 20: 2, 30: 3 };
+    const strikeLevel = player.strikeLevel == null ? legacyLevels[Number(player.strikePercent)] : Number(player.strikeLevel);
     const paidStatus = String(player.paidStatus || "Pending");
-    if (!playerName || playerName.length > 60 || ![0, 10, 20, 30].includes(strikePercent) || !["Pending", "Paid"].includes(paidStatus)) {
+    if (playerName.length > 60 || !Number.isInteger(strikeLevel) || strikeLevel < 0 || strikeLevel > 3 || !["Pending", "Paid"].includes(paidStatus)) {
       return res.status(400).json({ error: "Check player names, strikes, and payment statuses" });
     }
     const counts = {};
+    let hasActivity = false;
     for (const event of cleanEvents) {
       const quantity = Number(player.counts?.[event.key] ?? 0);
       if (!Number.isFinite(quantity) || quantity < 0 || quantity > 1000000000) {
         return res.status(400).json({ error: "Activity counts must be zero or higher" });
       }
       counts[event.key] = quantity;
+      if (quantity !== 0) hasActivity = true;
     }
-    cleanPlayers.push({ name: playerName, strikePercent, paidStatus, counts, position: index });
+    if (!playerName) {
+      if (hasActivity || strikeLevel !== 0 || paidStatus !== "Pending") {
+        return res.status(400).json({ error: "Enter a player name for any row with activity, a strike, or a payment status" });
+      }
+      continue;
+    }
+    cleanPlayers.push({ name: playerName, strikeLevel, strikePercent: strikeLevel ? strikeOptions[strikeLevel - 1] : 0, paidStatus, counts, position: index });
   }
 
   const finish = Boolean(req.body.finish);
@@ -464,12 +498,13 @@ router.put("/family-admin/:familyId/periods/:periodId", requireAuth, (req, res) 
       eventIds.set(event.key, result.lastInsertRowid);
     }
     const addPlayer = db.prepare(`
-      INSERT INTO bonus_period_players (period_id, player_name, strike_percent, paid_status, position)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO bonus_period_players (period_id, player_name, strike_percent, strike_level, paid_status, position)
+      VALUES (?, ?, ?, ?, ?, ?)
     `);
     const addEntry = db.prepare("INSERT INTO bonus_entries (period_player_id, event_id, quantity) VALUES (?, ?, ?)");
     for (const player of cleanPlayers) {
-      const result = addPlayer.run(periodId, player.name, player.strikePercent, player.paidStatus, player.position);
+      const legacyStrikePercent = [0, 10, 20, 30].includes(player.strikePercent) ? player.strikePercent : 0;
+      const result = addPlayer.run(periodId, player.name, legacyStrikePercent, player.strikeLevel, player.paidStatus, player.position);
       for (const event of cleanEvents) {
         addEntry.run(result.lastInsertRowid, eventIds.get(event.key), player.counts[event.key]);
       }
@@ -477,12 +512,13 @@ router.put("/family-admin/:familyId/periods/:periodId", requireAuth, (req, res) 
     db.prepare(`
       UPDATE bonus_periods
       SET name = ?, start_date = ?,
+        strike_1_percent = ?, strike_2_percent = ?, strike_3_percent = ?,
         status = CASE WHEN ? THEN 'finished' ELSE status END,
         end_date = CASE WHEN ? THEN date('now') ELSE end_date END,
         finished_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE finished_at END,
         saved_at = CURRENT_TIMESTAMP
       WHERE id = ? AND family_id = ?
-    `).run(name, startDate, finish ? 1 : 0, finish ? 1 : 0, finish ? 1 : 0, periodId, access.familyId);
+    `).run(name, startDate, strikeOptions[0], strikeOptions[1], strikeOptions[2], finish ? 1 : 0, finish ? 1 : 0, finish ? 1 : 0, periodId, access.familyId);
     const after = loadSheet(periodId);
     recordAudit(
       req,

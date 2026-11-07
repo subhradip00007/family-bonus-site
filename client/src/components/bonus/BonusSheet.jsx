@@ -38,7 +38,7 @@ function BonusSheet() {
               <span className="bonus-readonly">PUBLIC · READ ONLY</span>
             </header>
             <section className="bonus-sheet-section">
-              <div className="bonus-sheet-caption"><div><h2>Bonus sheet</h2><p>Prices, activity counts, strike deductions, and payout status.</p></div><span>{sheet.playersCount} players</span></div>
+              <div className="bonus-sheet-caption"><div><h2>Bonus sheet</h2><p>Prices, activity counts, strike deductions, and payout status.</p><p>Strike rates: {(sheet.strikeOptions || [10, 20, 30]).map((percent, index) => `Strike ${index + 1}: ${percent}%`).join(" · ")}</p></div><span>{sheet.playersCount} players</span></div>
               <div className="bonus-table-wrap">
                 <table className="bonus-sheet-table">
                   <thead>
@@ -49,7 +49,7 @@ function BonusSheet() {
                     {sheet.players.map((player) => <tr key={player.id}>
                       <td className="bonus-player-cell">{player.name}</td>
                       {sheet.events.map((event) => <td className="bonus-number" key={event.id}>{format(player.counts[event.id])}</td>)}
-                      <td>Strike {player.strikePercent ? player.strikePercent / 10 : "—"}{player.strikePercent ? ` · ${player.strikePercent}%` : ""}</td>
+                      <td>{player.strikeLevel ? `Strike ${player.strikeLevel} · ${player.strikePercent}%` : "None"}</td>
                       <td className="bonus-number">{format(player.subtotal)}</td>
                       <td className="bonus-number bonus-deduction">−{format(player.deduction)}</td>
                       <td className="bonus-number bonus-payout">{format(player.payout)}</td>

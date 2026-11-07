@@ -21,14 +21,16 @@ async function responseData(response) {
 
 function toEditor(sheet) {
   const events = sheet.events.map((event) => ({ clientId: String(event.id), name: event.name, rate: Number(event.rate) }));
+  const strikeOptions = (sheet.strikeOptions || [10, 20, 30]).map(Number);
   const players = sheet.players.map((player) => ({
     id: player.id,
     name: player.name,
+    strikeLevel: Number(player.strikeLevel || 0),
     strikePercent: Number(player.strikePercent),
     paidStatus: player.paidStatus,
     counts: Object.fromEntries(events.map((event) => [event.clientId, Number(player.counts[event.clientId] || 0)])),
   }));
-  return { family: sheet.family, period: sheet.period, events, players };
+  return { family: sheet.family, period: sheet.period, events, strikeOptions, players };
 }
 
 function FamilyAdmin() {
@@ -100,8 +102,9 @@ function FamilyAdmin() {
     if (!editor) return [];
     return editor.players.map((player) => {
       const subtotal = editor.events.reduce((sum, event) => sum + Number(event.rate || 0) * Number(player.counts[event.clientId] || 0), 0);
-      const deduction = subtotal * Number(player.strikePercent || 0) / 100;
-      return { ...player, subtotal, deduction, payout: subtotal - deduction };
+      const strikePercent = player.strikeLevel ? Number(editor.strikeOptions[player.strikeLevel - 1] || 0) : 0;
+      const deduction = subtotal * strikePercent / 100;
+      return { ...player, strikePercent, subtotal, deduction, payout: subtotal - deduction };
     });
   }, [editor]);
 
@@ -153,6 +156,13 @@ function FamilyAdmin() {
     setEditor((current) => ({ ...current, events: current.events.map((event) => event.clientId === clientId ? { ...event, [field]: field === "rate" ? Math.max(0, Number(value) || 0) : value } : event) }));
   }
 
+  function updateStrikeOption(index, value) {
+    setEditor((current) => ({
+      ...current,
+      strikeOptions: current.strikeOptions.map((percent, optionIndex) => optionIndex === index ? Math.min(100, Math.max(0, Number(value) || 0)) : percent),
+    }));
+  }
+
   function updatePlayer(playerId, field, value) {
     setEditor((current) => ({ ...current, players: current.players.map((player) => player.id === playerId ? { ...player, [field]: value } : player) }));
   }
@@ -191,7 +201,7 @@ function FamilyAdmin() {
     const id = `new-player-${Date.now()}-${nextId.current++}`;
     setEditor((current) => ({
       ...current,
-      players: [...current.players, { id, name: "New player", strikePercent: 0, paidStatus: "Pending", counts: Object.fromEntries(current.events.map((event) => [event.clientId, 0])) }],
+      players: [...current.players, { id, name: "", strikeLevel: 0, strikePercent: 0, paidStatus: "Pending", counts: Object.fromEntries(current.events.map((event) => [event.clientId, 0])) }],
     }));
   }
 
@@ -213,8 +223,9 @@ function FamilyAdmin() {
           name: editor.period.name,
           startDate: editor.period.startDate,
           finish,
-          events: editor.events.map((event) => ({ clientId: event.clientId, name: event.name, rate: Number(event.rate) })),
-          players: editor.players.map((player) => ({ name: player.name, strikePercent: Number(player.strikePercent), paidStatus: player.paidStatus, counts: player.counts })),
+          events: editor.events.map((event) => ({ clientId: event.clientId, name: event.name, rate: Number(event.rate || 0) })),
+          strikeOptions: editor.strikeOptions.map((percent) => Number(percent || 0)),
+          players: editor.players.map((player) => ({ name: player.name, strikeLevel: Number(player.strikeLevel || 0), paidStatus: player.paidStatus, counts: player.counts })),
         };
         sheet = await responseData(await fetch(`${API}/family-admin/${familyId}/periods/${editor.period.id}`, {
           method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", "X-Sheet-Lock": lockToken }, body: JSON.stringify(body),
@@ -262,6 +273,7 @@ function FamilyAdmin() {
       family: access.family,
       period: editor.period,
       events: editor.events,
+      strikeOptions: editor.strikeOptions,
       players: calculatedPlayers,
       payoutTotal: calculatedPlayers.reduce((sum, player) => sum + player.payout, 0),
     });
@@ -399,20 +411,25 @@ function FamilyAdmin() {
               <span>{canManage ? "Edit event prices, player counts, strikes, and payout status." : "HC access: add or update activity counts for this period."}</span>
               {canManage && <div><button className="bonus-outline-button" onClick={addEvent} disabled={!lockToken}>＋ Add event column</button><button className="bonus-outline-button" onClick={addPlayer} disabled={!lockToken}>＋ Add player row</button></div>}
             </div>
+            {canManage && <div className="bonus-strike-config">
+              <strong>Strike deductions</strong>
+              <span>Set each strike as a percentage of the player’s subtotal.</span>
+              <div>{editor.strikeOptions.map((percent, index) => <label key={index}>Strike {index + 1}<span><input className="bonus-edit-input" type="number" min="0" max="100" step="0.01" value={percent || ""} disabled={!lockToken} onChange={(event) => updateStrikeOption(index, event.target.value)} aria-label={`Strike ${index + 1} percentage`} /><b>%</b></span></label>)}</div>
+            </div>}
             <div className="bonus-table-wrap">
               <table className="bonus-sheet-table bonus-edit-table">
                 <thead>
                   <tr><th>Player</th>{editor.events.map((event) => <th key={event.clientId}><div className="bonus-event-heading"><input value={event.name} disabled={!canManage || !lockToken} onChange={(e) => updateEvent(event.clientId, "name", e.target.value)} aria-label="Event name"/>{canManage && <button aria-label={`Remove ${event.name} event`} disabled={!lockToken} onClick={() => removeEvent(event.clientId)}>×</button>}</div></th>)}<th>Strike</th><th>Subtotal</th><th>Deduction</th><th>Payout</th><th>Status</th>{canManage && <th />}</tr>
-                  <tr className="bonus-price-row"><th>Price per event</th>{editor.events.map((event) => <th key={event.clientId}><input className="bonus-edit-input bonus-rate-input" type="number" min="0" step="1" value={event.rate} disabled={!canManage || !lockToken} onChange={(e) => updateEvent(event.clientId, "rate", e.target.value)} aria-label={`${event.name} price per event`}/></th>)}<th>Player’s rate</th><th>—</th><th>—</th><th>—</th><th>—</th>{canManage && <th />}</tr>
+                  <tr className="bonus-price-row"><th>Price per event</th>{editor.events.map((event) => <th key={event.clientId}><input className="bonus-edit-input bonus-rate-input" type="number" min="0" step="1" value={event.rate || ""} disabled={!canManage || !lockToken} onChange={(e) => updateEvent(event.clientId, "rate", e.target.value)} aria-label={`${event.name} price per event`}/></th>)}<th>Strike rates</th><th>—</th><th>—</th><th>—</th><th>—</th>{canManage && <th />}</tr>
                 </thead>
                 <tbody>
-                  {calculatedPlayers.map((player) => <tr key={player.id}>
-                    <td><input className="bonus-edit-input player-input" value={player.name} disabled={!canManage || !lockToken} onChange={(e) => updatePlayer(player.id, "name", e.target.value)} aria-label="Player name" /></td>
-                    {editor.events.map((event) => <td key={event.clientId}><input className="bonus-edit-input bonus-number-input" type="number" min="0" step="1" value={player.counts[event.clientId] || 0} disabled={isReadOnly} onChange={(e) => updateCount(player.id, event.clientId, e.target.value)} aria-label={`${event.name} count for ${player.name}`} /></td>)}
-                    <td><select className="bonus-edit-input" value={player.strikePercent} disabled={!canManage || !lockToken} onChange={(e) => updatePlayer(player.id, "strikePercent", Number(e.target.value))}><option value="0">None</option><option value="10">Strike 1 · 10%</option><option value="20">Strike 2 · 20%</option><option value="30">Strike 3 · 30%</option></select></td>
+                  {calculatedPlayers.map((player, playerIndex) => <tr key={player.id}>
+                    <td><input className="bonus-edit-input player-input" value={player.name} disabled={!canManage || !lockToken} onChange={(e) => updatePlayer(player.id, "name", e.target.value)} aria-label={`Player name row ${playerIndex + 1}`} /></td>
+                    {editor.events.map((event) => <td key={event.clientId}><input className="bonus-edit-input bonus-number-input" type="number" min="0" step="1" value={player.counts[event.clientId] || ""} disabled={isReadOnly} onChange={(e) => updateCount(player.id, event.clientId, e.target.value)} aria-label={`${event.name} count for ${player.name || `player row ${playerIndex + 1}`}`} /></td>)}
+                    <td><select className="bonus-edit-input" value={player.strikeLevel} disabled={!canManage || !lockToken} onChange={(e) => updatePlayer(player.id, "strikeLevel", Number(e.target.value))}><option value="0">None</option>{editor.strikeOptions.map((percent, index) => <option key={index} value={index + 1}>Strike {index + 1} · {percent}%</option>)}</select></td>
                     <td className="bonus-number">{format(player.subtotal)}</td><td className="bonus-number bonus-deduction">−{format(player.deduction)}</td><td className="bonus-number bonus-payout">{format(player.payout)}</td>
                     <td><select className="bonus-edit-input" value={player.paidStatus} disabled={!canManage || !lockToken} onChange={(e) => updatePlayer(player.id, "paidStatus", e.target.value)}><option>Pending</option><option>Paid</option></select></td>
-                    {canManage && <td><button className="bonus-icon-button" disabled={!lockToken} onClick={() => removePlayer(player.id)} aria-label={`Remove ${player.name}`}>×</button></td>}
+                    {canManage && <td><button className="bonus-icon-button" disabled={!lockToken} onClick={() => removePlayer(player.id)} aria-label={`Remove player row ${playerIndex + 1}`}>×</button></td>}
                   </tr>)}
                 </tbody>
               </table>

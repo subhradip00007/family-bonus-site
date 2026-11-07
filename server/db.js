@@ -74,6 +74,9 @@ db.exec(`
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'finished')),
     saved_at TEXT,
     finished_at TEXT,
+    strike_1_percent REAL NOT NULL DEFAULT 10 CHECK (strike_1_percent >= 0 AND strike_1_percent <= 100),
+    strike_2_percent REAL NOT NULL DEFAULT 20 CHECK (strike_2_percent >= 0 AND strike_2_percent <= 100),
+    strike_3_percent REAL NOT NULL DEFAULT 30 CHECK (strike_3_percent >= 0 AND strike_3_percent <= 100),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -90,6 +93,7 @@ db.exec(`
     period_id INTEGER NOT NULL REFERENCES bonus_periods(id) ON DELETE CASCADE,
     player_name TEXT NOT NULL,
     strike_percent INTEGER NOT NULL DEFAULT 0 CHECK (strike_percent IN (0, 10, 20, 30)),
+    strike_level INTEGER NOT NULL DEFAULT 0 CHECK (strike_level IN (0, 1, 2, 3)),
     paid_status TEXT NOT NULL DEFAULT 'Pending' CHECK (paid_status IN ('Pending', 'Paid')),
     position INTEGER NOT NULL DEFAULT 0
   );
@@ -137,6 +141,23 @@ if (!familyColumns.some((column) => column.name === "logo")) {
 const columns = db.prepare("PRAGMA table_info(users)").all();
 if (!columns.some((column) => column.name === "picture")) {
   db.exec("ALTER TABLE users ADD COLUMN picture TEXT");
+}
+
+const periodColumns = db.prepare("PRAGMA table_info(bonus_periods)").all();
+for (const [column, defaultValue] of [["strike_1_percent", 10], ["strike_2_percent", 20], ["strike_3_percent", 30]]) {
+  if (!periodColumns.some((entry) => entry.name === column)) {
+    db.exec(`ALTER TABLE bonus_periods ADD COLUMN ${column} REAL NOT NULL DEFAULT ${defaultValue} CHECK (${column} >= 0 AND ${column} <= 100)`);
+  }
+}
+
+const playerColumns = db.prepare("PRAGMA table_info(bonus_period_players)").all();
+if (!playerColumns.some((column) => column.name === "strike_level")) {
+  db.exec(`
+    ALTER TABLE bonus_period_players
+    ADD COLUMN strike_level INTEGER NOT NULL DEFAULT 0 CHECK (strike_level IN (0, 1, 2, 3));
+    UPDATE bonus_period_players
+    SET strike_level = CASE strike_percent WHEN 10 THEN 1 WHEN 20 THEN 2 WHEN 30 THEN 3 ELSE 0 END;
+  `);
 }
 
 export default db;

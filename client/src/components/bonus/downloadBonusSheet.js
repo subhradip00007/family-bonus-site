@@ -21,6 +21,7 @@ export function downloadBonusSheet(sheet) {
     ["Period", sheet.period?.name || ""],
     ["Start date", sheet.period?.startDate || ""],
     ["End date", sheet.period?.endDate || ""],
+    ["Strike deductions", (sheet.strikeOptions || [10, 20, 30]).map((percent, index) => `Strike ${index + 1}: ${percent}%`).join(" | ")],
     [],
     ["Price per event", ...events.map((event) => Number(event.rate) || 0), ...trailingColumns.map(() => "")],
     ["Player", ...events.map((event) => event.name), ...trailingColumns],
@@ -29,7 +30,7 @@ export function downloadBonusSheet(sheet) {
       const subtotal = player.subtotal ?? events.reduce((sum, event, index) => sum + (Number(event.rate) || 0) * eventCounts[index], 0);
       const deduction = player.deduction ?? subtotal * (Number(player.strikePercent) || 0) / 100;
       const payout = player.payout ?? subtotal - deduction;
-      const strike = Number(player.strikePercent) ? `${Number(player.strikePercent)}%` : "None";
+      const strike = Number(player.strikeLevel) ? `Strike ${Number(player.strikeLevel)} · ${Number(player.strikePercent)}%` : "None";
       return [player.name, ...eventCounts, strike, subtotal, deduction, payout, player.paidStatus || "Pending"];
     }),
     ["Total payout", ...events.map(() => ""), ...trailingColumns.slice(0, 3).map(() => ""), Number(sheet.payoutTotal ?? players.reduce((sum, player) => {

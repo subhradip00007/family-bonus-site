@@ -90,6 +90,14 @@
 .bonus-editor-fields input:disabled { opacity: .72; }
 .bonus-editor-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 9px; margin: 0 0 9px; color: #a8b8cc; font-size: 10px; }
 .bonus-editor-tools > div { display: flex; flex-wrap: wrap; gap: 7px; }
+.bonus-strike-config { display: flex; flex-wrap: wrap; align-items: center; gap: 9px 14px; margin: 0 0 10px; padding: 10px 12px; border: 1px solid #2b405e; border-radius: 8px; background: #101e31; color: #c4d2e5; font-size: 10px; }
+.bonus-strike-config > strong { color: #edf4fd; font-size: 11px; }
+.bonus-strike-config > span { color: #97abc4; }
+.bonus-strike-config > div { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.bonus-strike-config label { display: flex; align-items: center; gap: 6px; }
+.bonus-strike-config label > span { display: flex; align-items: center; gap: 4px; }
+.bonus-strike-config input { width: 68px; min-width: 68px; text-align: right; }
+.bonus-strike-config b { color: #a8bad1; font-size: 10px; }
 .bonus-event-heading { display: flex; min-width: 85px; align-items: center; gap: 4px; }
 .bonus-event-heading input { width: 100%; min-width: 0; min-height: 30px; padding: 0 5px; border: 1px solid #39516e; border-radius: 5px; background: #0c1828; color: #edf4fd; font: inherit; font-size: 10px; }
 .bonus-event-heading button, .bonus-icon-button { width: 25px; height: 28px; border: 1px solid #465b75; border-radius: 5px; background: #132239; color: #d9e6f6; font-size: 14px; }
@@ -102,6 +110,9 @@
 .bonus-rate-input, .bonus-number-input { width: 88px; min-width: 88px; text-align: right; }
 .bonus-editor-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; color: #a7b6ca; font-size: 10px; }
 .bonus-editor-footer > div { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 650px) {
+  .bonus-strike-config > div { width: 100%; margin-left: 0; }
+}
 .bonus-role-manager { margin-top: 18px; border: 1px solid #2b405e; border-radius: 12px; background: #0e1929; }
 .bonus-role-page { padding: 17px; }
 .bonus-role-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
