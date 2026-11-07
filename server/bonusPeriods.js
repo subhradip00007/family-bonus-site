@@ -218,13 +218,14 @@ router.get("/families/:familyId/periods/:periodId", (req, res) => {
 router.get("/family-admin/:familyId", requireAuth, (req, res) => {
   const access = requireFamilyAccess(req, res);
   if (!access) return;
+  const canManage = ["Dev", "Super Admin", "Deputy"].includes(access.role);
   res.json({
     family: access.family,
     role: access.role,
-    canManage: ["Dev", "Super Admin", "Deputy"].includes(access.role),
+    canManage,
     canAddData: ["Dev", "Super Admin", "Deputy", "HC"].includes(access.role),
     periods: periodList(access.familyId, true),
-    roster: familyRoster(access.familyId),
+    roster: canManage ? familyRoster(access.familyId) : { members: [], pending: [] },
   });
 });
 
@@ -284,6 +285,7 @@ router.delete("/family-admin/:familyId/periods/:periodId/lock", requireAuth, (re
 router.get("/family-admin/:familyId/audit", requireAuth, (req, res) => {
   const access = requireFamilyAccess(req, res);
   if (!access) return;
+  if (!requireManager(access, res)) return;
   const entries = db.prepare(`
     SELECT id, period_id AS periodId, actor_label AS actorLabel, action, summary, details, created_at AS createdAt
     FROM family_audit_log WHERE family_id = ? ORDER BY id DESC LIMIT 200

@@ -1,0 +1,27 @@
+[Unit]
+Description=Family Bonus application API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=familybonus
+Group=familybonus
+WorkingDirectory=/srv/family-bonus-site/server
+EnvironmentFile=/etc/family-bonus/family-bonus.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node index.js
+Restart=on-failure
+RestartSec=5
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadWritePaths=/var/lib/family-bonus
+
+[Install]
+WantedBy=multi-user.target

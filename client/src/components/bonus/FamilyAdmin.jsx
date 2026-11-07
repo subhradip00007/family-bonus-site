@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import { downloadBonusSheet } from "./downloadBonusSheet";
 import "./BonusViews.css";
 
 const API = "/api";
@@ -41,6 +42,7 @@ function FamilyAdmin() {
   const [shareId, setShareId] = useState(null);
   const [shareLink, setShareLink] = useState("");
   const [shareNotice, setShareNotice] = useState("");
+  const [downloadBusyId, setDownloadBusyId] = useState(null);
   const [auditOpen, setAuditOpen] = useState(false);
   const [rolesOpen, setRolesOpen] = useState(false);
   const [auditEntries, setAuditEntries] = useState([]);
@@ -241,6 +243,30 @@ function FamilyAdmin() {
     catch { setShareNotice("Copy the link below"); }
   }
 
+  async function downloadPeriod(period) {
+    setDownloadBusyId(period.id);
+    setError("");
+    try {
+      const sheet = await responseData(await fetch(`${API}/family-admin/${familyId}/periods/${period.id}`, { credentials: "include" }));
+      downloadBonusSheet(sheet);
+    } catch (err) {
+      setError(`Could not download ${period.name}: ${err.message}`);
+    } finally {
+      setDownloadBusyId(null);
+    }
+  }
+
+  function downloadEditorSheet() {
+    if (!editor) return;
+    downloadBonusSheet({
+      family: access.family,
+      period: editor.period,
+      events: editor.events,
+      players: calculatedPlayers,
+      payoutTotal: calculatedPlayers.reduce((sum, player) => sum + player.payout, 0),
+    });
+  }
+
   async function grantFamilyRole(event) {
     event.preventDefault();
     setBusy(true); setError(""); setNotice("");
@@ -319,7 +345,7 @@ function FamilyAdmin() {
           <div className="bonus-header-actions">
             <button className={`bonus-outline-button ${!auditOpen && !rolesOpen ? "selected" : ""}`} onClick={() => { setAuditOpen(false); setRolesOpen(false); }} aria-pressed={!auditOpen && !rolesOpen}>Bonus sheets</button>
             {grantableRoles.length > 0 && <button className={`bonus-outline-button ${rolesOpen ? "selected" : ""}`} onClick={openRoleManager} aria-pressed={rolesOpen}>Manage roles</button>}
-            <button className={`bonus-outline-button ${auditOpen ? "selected" : ""}`} onClick={openAuditLog} aria-pressed={auditOpen}>Activity log</button>
+            {canManage && <button className={`bonus-outline-button ${auditOpen ? "selected" : ""}`} onClick={openAuditLog} aria-pressed={auditOpen}>Activity log</button>}
             {!editor && canManage && <button className="bonus-primary-button" onClick={startPeriod} disabled={busy || Boolean(activePeriod)}>＋ Start a period</button>}
           </div>
         </header>
@@ -359,7 +385,10 @@ function FamilyAdmin() {
           <section className="bonus-editor">
             <div className="bonus-editor-head">
               <div><p className="bonus-eyebrow">{editor.period.status === "finished" ? "SAVED PERIOD" : "CURRENT PERIOD"}</p><h2>{editor.period.status === "finished" ? "Edit saved sheet" : "Current bonus sheet"}</h2></div>
-              <button className="bonus-outline-button" onClick={closeEditor}>Back to period list</button>
+              <div className="bonus-period-actions">
+                <button className="bonus-outline-button" onClick={downloadEditorSheet}>Download</button>
+                <button className="bonus-outline-button" onClick={closeEditor}>Back to period list</button>
+              </div>
             </div>
             <div className="bonus-editor-fields">
               <label>Period name<input value={editor.period.name} disabled={isReadOnly} onChange={(event) => updatePeriod("name", event.target.value)} /></label>
@@ -407,6 +436,7 @@ function FamilyAdmin() {
                     <div className="bonus-period-total"><span>Total payout</span><strong>{format(period.payoutTotal)}</strong></div>
                     <div className="bonus-period-actions">
                       {canManage || (canAddData && period.status === "active") ? <button className="bonus-primary-button" onClick={() => openPeriod(period.id)} disabled={busy}>{canManage ? "Edit sheet" : "Add activity data"}</button> : <Link className="bonus-primary-button" to={`/families/${familyId}/periods/${period.id}`}>View sheet</Link>}
+                      <button className="bonus-outline-button" onClick={() => downloadPeriod(period)} disabled={downloadBusyId === period.id}>{downloadBusyId === period.id ? "Preparing…" : "Download"}</button>
                       {period.savedAt && <button className="bonus-outline-button" onClick={() => sharePeriod(period)}>Share</button>}
                       {period.savedAt && <Link className="bonus-text-link" to={`/families/${familyId}/periods/${period.id}`}>Public view</Link>}
                     </div>

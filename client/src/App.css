@@ -56,6 +56,101 @@
   max-width: 620px;
 }
 
+.contact-modal-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(4 8 15 / 76%);
+  backdrop-filter: blur(5px);
+}
+
+.contact-modal {
+  position: relative;
+  width: min(440px, 100%);
+  padding: 28px;
+  border: 1px solid #34435a;
+  border-radius: 16px;
+  background: #111a29;
+  color: #f5f7fb;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
+}
+
+.contact-modal-close {
+  position: absolute;
+  top: 13px;
+  right: 15px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #34435a;
+  border-radius: 8px;
+  background: #182438;
+  color: #dbe5f3;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.contact-modal-eyebrow {
+  margin: 0 0 7px !important;
+  color: #8fbfff !important;
+  font-size: 10px !important;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+
+.contact-modal h2 {
+  margin: 0 42px 7px 0;
+  font-size: 23px;
+}
+
+.contact-modal-copy {
+  margin: 0 0 20px !important;
+  color: #aab8cb !important;
+  font-size: 13px !important;
+}
+
+.contact-option {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #344b6b;
+  border-radius: 10px;
+  background: #15243a;
+  color: #eef5ff;
+  text-decoration: none;
+  transition: border-color .15s ease, background .15s ease;
+}
+
+.contact-option:hover, .contact-option:focus-visible {
+  border-color: #69aaff;
+  background: #1a2e49;
+  outline: none;
+}
+
+.contact-option-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  place-items: center;
+  border-radius: 10px;
+  background: #5865f2;
+  color: #fff;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.contact-option-mail { background: #1d744f; }
+.contact-option > span:nth-child(2) { display: grid; gap: 3px; min-width: 0; }
+.contact-option strong { font-size: 13px; }
+.contact-option small { overflow-wrap: anywhere; color: #a9bbd3; font-size: 11px; }
+.contact-option-arrow { margin-left: auto; color: #a8c9f3; font-size: 18px; }
+
 .families {
   max-width: 1080px;
   margin: 0 auto;
@@ -200,4 +295,8 @@ a.btn {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .contact-modal { padding: 23px 18px; }
 }

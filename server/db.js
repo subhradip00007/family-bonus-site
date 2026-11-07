@@ -1,6 +1,12 @@
 import Database from "better-sqlite3";
+import { mkdirSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const db = new Database("bonus.db");
+const defaultDatabasePath = fileURLToPath(new URL("./bonus.db", import.meta.url));
+const databasePath = process.env.DATABASE_PATH ? resolve(process.env.DATABASE_PATH) : defaultDatabasePath;
+mkdirSync(dirname(databasePath), { recursive: true });
+const db = new Database(databasePath);
 db.pragma("foreign_keys = ON");
 
 db.exec(`
